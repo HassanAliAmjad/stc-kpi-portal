@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>STC KPI Portal — Login</title>
+  <link rel="stylesheet" href="css/style.css"/>
+</head>
+<body class="login-page">
+  <div class="login-wrap">
+
+    <div class="login-left">
+      <div class="login-brand">
+        <div class="stc-logo-box">
+          <svg viewBox="0 0 120 60" width="160" height="80" xmlns="http://www.w3.org/2000/svg">
+            <text x="0" y="52" font-family="Arial Black, Arial" font-weight="900" font-size="58" fill="white" letter-spacing="-2">stc</text>
+          </svg>
+        </div>
+        <h2 class="brand-slogan">Together Everyone<br/>Achieves More</h2>
+        <p class="brand-sub">KPI Intelligence Portal · eChannels CCR · Kuwait</p>
+        <div class="brand-divider"></div>
+        <div class="brand-stats">
+          <div class="bstat">
+            <div class="bstat-val">22</div>
+            <div class="bstat-label">Agents</div>
+          </div>
+          <div class="bstat-sep"></div>
+          <div class="bstat">
+            <div class="bstat-val">3</div>
+            <div class="bstat-label">Teams</div>
+          </div>
+          <div class="bstat-sep"></div>
+          <div class="bstat">
+            <div class="bstat-val">7</div>
+            <div class="bstat-label">KPIs Tracked</div>
+          </div>
+          <div class="bstat-sep"></div>
+          <div class="bstat">
+            <div class="bstat-val">2026</div>
+            <div class="bstat-label">Year</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="login-right">
+      <div class="login-card">
+        <div class="login-logo">
+          <div class="login-logo-icon">
+            <svg viewBox="0 0 80 40" width="90" height="45" xmlns="http://www.w3.org/2000/svg">
+              <text x="0" y="36" font-family="Arial Black, Arial" font-weight="900" font-size="40" fill="#6B2D8B" letter-spacing="-1">stc</text>
+            </svg>
+          </div>
+          <h1>KPI Intelligence Portal</h1>
+          <p>STC eChannels · CCR Performance Platform</p>
+          <p class="slogan-text">"Together Everyone Achieves More"</p>
+        </div>
+
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" id="username" placeholder="Enter your username"/>
+        </div>
+
+        <div class="form-group">
+          <label>Password</label>
+          <div class="password-wrap">
+            <input type="password" id="password" placeholder="Enter your password"/>
+            <span class="eye-btn" onclick="togglePassword()">👁</span>
+          </div>
+        </div>
+
+        <div id="loginError" class="error-msg" style="display:none">
+          Invalid username or password.
+        </div>
+
+        <button class="btn-login" onclick="doLogin()" id="loginBtn">Sign In</button>
+
+      </div>
+    </div>
+
+  </div>
+  <script src="js/api.js"></script>
+  <script src="js/login.js"></script>
+</body>
+</html>

@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>STC KPI Portal</title>
+  <link rel="stylesheet" href="css/style.css"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+</head>
+<body>
+
+<!-- AGENT MODAL -->
+<div id="agentModal" class="modal-overlay" onclick="closeModal(event)">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-agent-info">
+        <div class="modal-avatar" id="modalAvatar">JD</div>
+        <div><h2 id="modalName">Agent</h2><p id="modalMeta">Team · Language · HR ID</p></div>
+      </div>
+      <button class="modal-close" onclick="closeAgentModal()">✕</button>
+    </div>
+    <div class="modal-kpis" id="modalKPIs"></div>
+    <div class="modal-charts">
+      <div class="modal-chart-box">
+        <div class="modal-chart-title">Score trend — Jan to Apr 2026</div>
+        <div style="position:relative;height:180px"><canvas id="modalTrendChart" role="img" aria-label="Agent trend">Trend.</canvas></div>
+      </div>
+      <div class="modal-chart-box">
+        <div class="modal-chart-title">KPI breakdown — April 2026</div>
+        <div style="position:relative;height:180px"><canvas id="modalRadarChart" role="img" aria-label="KPI radar">KPI.</canvas></div>
+      </div>
+    </div>
+    <div class="modal-focus">
+      <div class="modal-chart-title">Focus areas & coaching notes</div>
+      <div id="modalFocus"></div>
+    </div>
+    <div class="modal-ai-btn" onclick="askAgentAI()">Ask AI for full coaching plan for this agent ↗</div>
+  </div>
+</div>
+
+<div class="app">
+
+  <!-- TOP NAV -->
+  <nav class="topnav">
+    <div class="topnav-left">
+      <div class="nav-logo">
+        <svg viewBox="0 0 60 30" width="55" height="28">
+          <text x="0" y="26" font-family="Arial Black" font-weight="900" font-size="28" fill="#6B2D8B">stc</text>
+        </svg>
+        <span class="nav-logo-divider"></span>
+        <span class="nav-title">KPI Intelligence</span>
+      </div>
+      <div class="nav-links">
+        <span class="nav-link active" onclick="showPage('overview',this)">Overview</span>
+        <span class="nav-link" onclick="showPage('agents',this)">Agents</span>
+        <span class="nav-link" onclick="showPage('teams',this)">Teams</span>
+        <span class="nav-link" onclick="showPage('attendance',this)">Attendance</span>
+        <span class="nav-link" onclick="showPage('ai',this)">AI Insights</span>
+        <span class="nav-link" onclick="showPage('upload',this)">Upload</span>
+      </div>
+    </div>
+    <div class="topnav-right">
+    <d<div class="period-selector">
+        <label class="period-label">Period</label>
+        <<select id="periodFilter" onchange="renderCurrentPage()">
+          <option value="Apr" selected>April 2026</option>
+          <option value="Mar">March 2026</option>
+          <option value="Feb">February 2026</option>
+          <option value="Jan">January 2026</option>
+          <option value="FebMarApr">Feb – Mar – Apr</option>
+          <option value="MarApr">Mar – Apr</option>
+          <option value="all">All months (Jan–Apr)</option>
+        </select>
+      </div>
+      <div class="nav-user">
+        <div class="nav-avatar" id="navAvatar">MG</div>
+        <div class="nav-user-info">
+          <span id="navName">Manager</span>
+          <span id="navRole">Admin</span>
+        </div>
+        <button class="nav-logout" onclick="logout()">Sign out</button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="main">
+
+    <!-- OVERVIEW -->
+    <div id="page-overview" class="page active">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Performance overview</h1>
+          <p class="page-sub">STC eChannels · CCR · <span id="overviewPeriod">Apr 2026</span></p>
+        </div>
+        <div class="period-badge" id="periodBadge">Apr 2026</div>
+      </div>
+
+      <div class="section-label">Department scorecard</div>
+      <div class="dept-scorecard" id="deptScorecard"></div>
+
+      <div class="section-label" style="margin-top:1.2rem">Performance spotlight</div>
+      <div class="spotlight-row" id="spotlight"></div>
+
+      <div class="section-label" style="margin-top:1.2rem">Key metrics</div>
+      <div class="metric-strip" id="metricStrip"></div>
+
+      <div class="charts-row">
+        <div class="chart-panel wide">
+          <div class="chart-panel-header">
+            <div>
+              <div class="chart-panel-title">Score trend</div>
+              <div class="chart-panel-sub">Monthly avg per team vs 85% target</div>
+            </div>
+            <div class="legend-row" id="trendLegend"></div>
+          </div>
+          <div style="position:relative;height:220px">
+            <canvas id="trendChart" role="img" aria-label="Monthly trend">Trend data.</canvas>
+          </div>
+        </div>
+        <div class="chart-panel narrow">
+          <div class="chart-panel-header">
+            <div>
+              <div class="chart-panel-title">Score bands</div>
+              <div class="chart-panel-sub">Agent distribution</div>
+            </div>
+          </div>
+          <div id="bandLegend" style="margin-bottom:8px"></div>
+          <div style="position:relative;height:190px">
+            <canvas id="bandChart" role="img" aria-label="Distribution">Distribution.</canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-label">Team performance</div>
+      <div class="team-strip" id="teamStrip"></div>
+
+      <div class="chart-panel" style="margin-top:1.2rem">
+        <div class="chart-panel-header">
+          <div>
+            <div class="chart-panel-title">Agent ranking</div>
+            <div class="chart-panel-sub">Click any name to view full agent profile</div>
+          </div>
+          <input class="search-input" id="agentSearch" placeholder="Search agent..." oninput="filterAgentTable()"/>
+        </div>
+        <div class="table-wrap">
+          <table class="ga-table" id="agentTable">
+            <thead><tr>
+              <th>#</th><th>Agent</th><th>Team</th><th>Score</th>
+              <th>Quality</th><th>Quiz</th><th>AHT</th><th>IRT</th>
+              <th>Referral</th><th>Tags</th><th>Status</th><th>Focus</th>
+            </tr></thead>
+            <tbody id="agentTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- AGENTS PAGE -->
+    <div id="page-agents" class="page">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Agent profiles</h1>
+          <p class="page-sub">Click any card to view full history and KPI breakdown</p>
+        </div>
+      </div>
+      <div class="agent-cards-grid" id="agentCardsGrid"></div>
+    </div>
+
+    <!-- TEAMS PAGE -->
+    <div id="page-teams" class="page">
+      <div class="page-header"><h1 class="page-title">Team performance</h1></div>
+      <div id="teamsContent"></div>
+    </div>
+
+    <!-- ATTENDANCE PAGE -->
+    <div id="page-attendance" class="page">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Attendance & Login Tracker</h1>
+          <p class="page-sub">Agent login and logout times</p>
+        </div>
+        <button class="btn-upload-att" onclick="document.getElementById('attFile').click()">Upload attendance file</button>
+        <input type="file" id="attFile" accept=".xlsx,.csv" style="display:none" onchange="handleAttendance(this)"/>
+      </div>
+      <div id="attendanceContent">
+        <div class="empty-state">
+          <div class="empty-icon">🕐</div>
+          <div class="empty-title">No attendance data yet</div>
+          <div class="empty-sub">Upload your agent login/logout Excel file to see attendance analytics</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI PAGE -->
+    <div id="page-ai" class="page">
+      <div class="page-header"><h1 class="page-title">AI insights — Claude</h1></div>
+      <div class="ai-layout">
+        <div class="ai-chat-panel">
+          <div class="chat-messages" id="chatMessages">
+            <div class="msg msg-ai">Hello! I am your KPI Intelligence Assistant. I have full access to your STC eChannels team data from January to April 2026 — 3 teams, 22 agents, 7 KPI dimensions. Ask me anything.</div>
+          </div>
+          <div class="quick-prompts">
+            <button class="qp-btn" onclick="askAI('Who are the top 3 performers in April 2026?')">Top 3 performers</button>
+            <button class="qp-btn" onclick="askAI('Which agents need urgent coaching right now?')">Urgent coaching</button>
+            <button class="qp-btn" onclick="askAI('Compare all 3 team leaders performance in April')">Compare TLs</button>
+            <button class="qp-btn" onclick="askAI('Which KPI is weakest across all teams?')">Weakest KPI</button>
+            <button class="qp-btn" onclick="askAI('Give me a management summary for April 2026')">Management summary</button>
+            <button class="qp-btn" onclick="askAI('Who improved the most from January to April 2026?')">Most improved</button>
+          </div>
+          <div class="chat-input-row">
+            <input class="chat-input" id="chatInput" placeholder="Ask about your KPI data..." onkeydown="if(event.key==='Enter')sendChat()"/>
+            <button class="btn-send" onclick="sendChat()">Send</button>
+          </div>
+        </div>
+        <div class="ai-insights-panel">
+          <div class="insight-card"><div class="insight-icon">🔴</div><div class="insight-title">Critical alert</div><div class="insight-body">Hashim Ramazan — AHT score 0% for 3 consecutive months. Score: 89% → 73% → 68% → 62%. Immediate intervention required.</div></div>
+          <div class="insight-card"><div class="insight-icon">🏆</div><div class="insight-title">Top performers</div><div class="insight-body">Ali Aaqab and Abdullah Alkhudari both achieved 100% in April. Team Abul Hassan leads with highest average.</div></div>
+          <div class="insight-card"><div class="insight-icon">📈</div><div class="insight-title">Most improved</div><div class="insight-body">AbdulHadi Ajay recovered from 37.5% in March to 86% in April — biggest single-month improvement.</div></div>
+          <div class="insight-card"><div class="insight-icon">⚠️</div><div class="insight-title">Team focus</div><div class="insight-body">Referrals and Tags accuracy are the weakest KPIs across all 3 teams in April 2026.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- UPLOAD PAGE -->
+    <div id="page-upload" class="page">
+      <div class="page-header"><h1 class="page-title">Data upload</h1></div>
+      <div class="upload-grid">
+        <div class="upload-card">
+          <div class="upload-card-icon">📊</div>
+          <div class="upload-card-title">Monthly KPI file</div>
+          <div class="upload-card-sub">Upload your monthly KPI Excel — same format as Jan–Apr files</div>
+          <div class="upload-zone" onclick="document.getElementById('kpiFile').click()">Drop .xlsx file here or click to browse</div>
+          <input type="file" id="kpiFile" accept=".xlsx" style="display:none" onchange="handleKPIUpload(this)"/>
+        </div>
+        <div class="upload-card">
+          <div class="upload-card-icon">🕐</div>
+          <div class="upload-card-title">Attendance / Login file</div>
+          <div class="upload-card-sub">Upload agent login and logout times Excel file</div>
+          <div class="upload-zone" onclick="document.getElementById('attFile2').click()">Drop .xlsx file here or click to browse</div>
+          <input type="file" id="attFile2" accept=".xlsx,.csv" style="display:none" onchange="handleAttendance(this)"/>
+        </div>
+      </div>
+      <div style="margin-top:2rem">
+        <div class="section-label">Upload history — 2026</div>
+        <div id="uploadHistoryList"></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="js/api.js"></script>
+<script src="js/dashboard.js"></script>
+<script src="js/charts.js"></script>
+</body>
+</html>
