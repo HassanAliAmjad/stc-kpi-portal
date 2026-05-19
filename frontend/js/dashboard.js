@@ -41,7 +41,75 @@ let currentAgentModal=null;
 let modalTrendChart=null;
 let modalRadarChart=null;
 
-function capScore(s){return s===null?null:Math.min(s,1.0);}
+const KPI_LOOKUP={
+  quality:[{val:0.88,pts:0},{val:0.89,pts:10},{val:0.91,pts:12},{val:0.93,pts:14},{val:0.94,pts:16},{val:0.97,pts:18},{val:0.98,pts:20},{val:1.0,pts:20}],
+  quiz:[{val:88,pts:0},{val:89,pts:0},{val:90,pts:5},{val:92,pts:10},{val:95,pts:12},{val:97,pts:15},{val:100,pts:15}],
+  aht:[{val:22,pts:0},{val:20,pts:18},{val:18.5,pts:20},{val:16,pts:22},{val:15.5,pts:25},{val:12,pts:25}],
+  irt:[{val:180,pts:0},{val:150,pts:8},{val:165,pts:10},{val:150,pts:15},{val:135,pts:18},{val:120,pts:20}],
+  tags:[{val:10,pts:0},{val:9,pts:1},{val:7,pts:2},{val:5,pts:3},{val:2,pts:5},{val:0,pts:5}],
+  referral:[{val:100,pts:10},{val:70,pts:8},{val:50,pts:5},{val:21,pts:3},{val:20,pts:0}],
+  notready:[{val:90,pts:0},{val:60,pts:2},{val:75,pts:3},{val:60,pts:4},{val:60,pts:5}],
+};
+
+// Store actual agent performance data by month
+let AGENT_PERFORMANCE={};
+let CURRENT_MONTH='Apr';
+
+function handleKPIUpload(input){
+  const file=input.files[0];
+  if(!file) return;
+  
+  // Detect month from filename
+  let month='Apr';
+  const filename=file.name.toLowerCase();
+  if(filename.includes('jan')) month='Jan';
+  else if(filename.includes('feb')) month='Feb';
+  else if(filename.includes('mar')) month='Mar';
+  else if(filename.includes('apr')) month='Apr';
+  
+  CURRENT_MONTH=month;
+  
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+      const ws=wb.Sheets['Data Entry'];
+      const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+      
+      // Parse agent data
+      let count=0;
+      rows.forEach(r=>{
+        const user=String(r['User']||'').trim();
+        if(!user || user==='') return;
+        
+        const quality=parseFloat(r[' Quality'])||0;
+        const quiz=parseFloat(r['Quiz'])||0;
+        const referral=parseFloat(r['Referral TT'])||0;
+        const tags=parseFloat(r['TAGS 1'])||0;
+        const aht=r['ACHT1'];
+        const irt=r['IRT1'];
+        
+        if(!AGENT_PERFORMANCE[user]) AGENT_PERFORMANCE[user]={};
+        
+        AGENT_PERFORMANCE[user][month]={
+          quality: quality,
+          quiz: quiz,
+          referral: referral,
+          tags: tags,
+          aht: aht,
+          irt: irt,
+        };
+        count++;
+      });
+      
+      alert('✅ '+month+' KPI data loaded — '+count+' agents');
+      console.log('AGENT_PERFORMANCE:', AGENT_PERFORMANCE);
+    }catch(err){
+      alert('Error: '+err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
 function scoreColor(s){if(!s)return'#888';if(s>=0.95)return'#1a7f37';if(s>=0.85)return'#6B2D8B';if(s>=0.70)return'#856404';return'#c0392b';}
 function scoreBadge(s){if(!s)return'';if(s>=0.95)return'sb-out';if(s>=0.85)return'sb-good';if(s>=0.70)return'sb-needs';return'sb-risk';}
 function scoreLabel(s){if(!s)return'—';if(s>=0.95)return'Outstanding';if(s>=0.85)return'Good';if(s>=0.70)return'Needs Work';return'At Risk';}
@@ -333,17 +401,79 @@ function openAgentModal(hrid){
 
   const apr=found.kpi.Apr;
   const displayScore=avgScore;
+  
+  // Get actual performance data for this agent and month
+  const monthData=AGENT_PERFORMANCE[found.hrid]||{};
+  const currentMonthData=monthData[CURRENT_MONTH]||{quality:0.98,quiz:100,referral:61,tags:0,aht:'00:13:31',irt:'00:00:45'};
+  
+  // Format values
+  const qualityPct=Math.round(currentMonthData.quality*100);
+  const quizVal=Math.round(currentMonthData.quiz);
+  const referralVal=Math.round(currentMonthData.referral);
+  const tagsVal=Math.round(currentMonthData.tags);
+  
+  // Get string representations of time values
+  const ahtStr=(typeof currentMonthData.aht==='string'?currentMonthData.aht.substring(0,8):'00:13:31');
+  const irtStr=(typeof currentMonthData.irt==='string'?currentMonthData.irt.substring(0,8):'00:00:45');
 
-  document.getElementById('modalKPIs').innerHTML=[
-    {label:'Period avg score',val:displayScore?Math.round(displayScore*100)+'%':'—',color:scoreColor(displayScore)},
-    {label:'Quality (20%)',val:apr.q+'%',color:apr.q>=20?'#1a7f37':'#856404'},
-    {label:'Quiz (15%)',val:apr.quiz+'%',color:apr.quiz>=15?'#1a7f37':'#856404'},
-    {label:'AHT (25%)',val:apr.aht+'%',color:apr.aht===0?'#c0392b':apr.aht>=25?'#1a7f37':'#856404'},
-    {label:'IRT (20%)',val:apr.irt+'%',color:apr.irt>=20?'#1a7f37':'#856404'},
-    {label:'Referral (10%)',val:apr.ref+'%',color:apr.ref>=10?'#1a7f37':'#856404'},
-    {label:'Tags (5%)',val:apr.tags+'%',color:apr.tags>=5?'#1a7f37':'#856404'},
-    {label:'Absenteeism',val:apr.abs+' days',color:apr.abs===0?'#1a7f37':'#c0392b'},
-  ].map(k=>`<div class="modal-kpi"><div class="modal-kpi-val" style="color:${k.color}">${k.val}</div><div class="modal-kpi-label">${k.label}</div></div>`).join('');
+  document.getElementById('modalKPIs').innerHTML=`
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:10px;width:100%">
+      <div style="background:var(--color-background-secondary);border-radius:6px;padding:10px;text-align:center">
+        <div style="font-size:17px;font-weight:500;color:var(--color-text-primary);margin-bottom:2px">${qualityPct}%</div>
+        <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:6px">Quality</div>
+        <div style="font-size:12px;font-weight:500;color:#6B2D8B;padding:3px 6px;background:rgba(107,45,139,0.1);border-radius:4px">${apr.q}%</div>
+      </div>
+      <div style="background:var(--color-background-secondary);border-radius:6px;padding:10px;text-align:center">
+        <div style="font-size:17px;font-weight:500;color:var(--color-text-primary);margin-bottom:2px">${quizVal}</div>
+        <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:6px">Quiz</div>
+        <div style="font-size:12px;font-weight:500;color:#6B2D8B;padding:3px 6px;background:rgba(107,45,139,0.1);border-radius:4px">${apr.quiz}%</div>
+      </div>
+      <div style="background:var(--color-background-secondary);border-radius:6px;padding:10px;text-align:center">
+        <div style="font-size:17px;font-weight:500;color:var(--color-text-primary);margin-bottom:2px">${ahtStr}</div>
+        <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:6px">AHT</div>
+        <div style="font-size:12px;font-weight:500;color:${apr.aht===0?'#c0392b':'#6B2D8B'};padding:3px 6px;background:rgba(${apr.aht===0?'192,57,43':'107,45,139'},0.1);border-radius:4px">${apr.aht}%</div>
+      </div>
+      <div style="background:var(--color-background-secondary);border-radius:6px;padding:10px;text-align:center">
+        <div style="font-size:17px;font-weight:500;color:var(--color-text-primary);margin-bottom:2px">${irtStr}</div>
+        <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:6px">IRT</div>
+        <div style="font-size:12px;font-weight:500;color:#6B2D8B;padding:3px 6px;background:rgba(107,45,139,0.1);border-radius:4px">${apr.irt}%</div>
+      </div>
+      <div style="background:var(--color-background-secondary);border-radius:6px;padding:10px;text-align:center">
+        <div style="font-size:17px;font-weight:500;color:var(--color-text-primary);margin-bottom:2px">${referralVal}</div>
+        <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:6px">Referrals</div>
+        <div style="font-size:12px;font-weight:500;color:${apr.ref>=10?'#6B2D8B':'#c0392b'};padding:3px 6px;background:rgba(${apr.ref>=10?'107,45,139':'192,57,43'},0.1);border-radius:4px">${apr.ref}%</div>
+      </div>
+      <div style="background:var(--color-background-secondary);border-radius:6px;padding:10px;text-align:center">
+        <div style="font-size:17px;font-weight:500;color:var(--color-text-primary);margin-bottom:2px">${tagsVal}</div>
+        <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:6px">Tags</div>
+        <div style="font-size:12px;font-weight:500;color:#6B2D8B;padding:3px 6px;background:rgba(107,45,139,0.1);border-radius:4px">${apr.tags}%</div>
+      </div>
+      <div style="background:var(--color-background-secondary);border-radius:6px;padding:10px;text-align:center">
+        <div style="font-size:17px;font-weight:500;color:var(--color-text-primary);margin-bottom:2px">${apr.abs||0}</div>
+        <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:6px">Absenteeism</div>
+        <div style="font-size:12px;font-weight:500;color:${apr.abs===0?'#6B2D8B':'#c0392b'};padding:3px 6px;background:rgba(${apr.abs===0?'107,45,139':'192,57,43'},0.1);border-radius:4px">5%</div>
+      </div>
+      <div style="background:var(--color-background-secondary);border-radius:6px;padding:10px;text-align:center">
+        <div style="font-size:17px;font-weight:500;color:var(--color-text-primary);margin-bottom:2px">0</div>
+        <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:6px">Punctuality</div>
+        <div style="font-size:12px;font-weight:500;color:#6B2D8B;padding:3px 6px;background:rgba(107,45,139,0.1);border-radius:4px">5%</div>
+      </div>
+      <div style="background:var(--color-background-secondary);border-radius:6px;padding:10px;text-align:center">
+        <div style="font-size:17px;font-weight:500;color:var(--color-text-primary);margin-bottom:2px">7:00</div>
+        <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:6px">Login Hrs</div>
+        <div style="font-size:12px;font-weight:500;color:#6B2D8B;padding:3px 6px;background:rgba(107,45,139,0.1);border-radius:4px">0%</div>
+      </div>
+      <div style="background:var(--color-background-secondary);border-radius:6px;padding:10px;text-align:center">
+        <div style="font-size:17px;font-weight:500;color:var(--color-text-primary);margin-bottom:2px">1:00</div>
+        <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:6px">Not Ready</div>
+        <div style="font-size:12px;font-weight:500;color:#6B2D8B;padding:3px 6px;background:rgba(107,45,139,0.1);border-radius:4px">5%</div>
+      </div>
+    </div>
+    <div style="margin-top:16px;padding:12px 14px;background:var(--color-background-secondary);border-radius:8px;border:2px solid #6B2D8B;text-align:center">
+      <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:4px">Total KPI Score (${CURRENT_MONTH} 2026)</div>
+      <div style="font-size:28px;font-weight:700;color:#6B2D8B">${displayScore?Math.round(displayScore*100)+'%':'N/A'}</div>
+    </div>
+  `;
 
   const existing=document.querySelector('.modal-month-scores');
   if(existing) existing.remove();
