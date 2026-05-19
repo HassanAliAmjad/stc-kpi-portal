@@ -53,6 +53,7 @@ const KPI_LOOKUP={
 
 // Store actual agent performance data by month
 let AGENT_PERFORMANCE={};
+let CURRENT_MONTH='Apr';
 function capScore(s){
   if(s===null||s===undefined) return null;
   return Math.min(s,1.0);
