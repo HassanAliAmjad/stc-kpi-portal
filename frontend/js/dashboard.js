@@ -60,6 +60,7 @@ function capScore(s){
 }
 
 
+  console.log("handleKPIUpload called, file:", input.files[0]);
 
 function handleKPIUpload(input){
   const file=input.files[0];
@@ -77,6 +78,7 @@ function handleKPIUpload(input){
   
   const reader=new FileReader();
   reader.onload=function(e){
+      console.log("XLSX loaded:", AGENT_PERFORMANCE);
     try{
       const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
       const ws=wb.Sheets['Data Entry'];
