@@ -688,24 +688,17 @@ window.onload=function(){
   renderOverview();
   renderUploadHistory();
 };
-// Direct event listener for KPI file upload
-document.addEventListener('DOMContentLoaded', function(){
-  const kpiInput = document.getElementById('kpiFile');
-  if(kpiInput){
-    kpiInput.addEventListener('change', function(){
-      console.log('KPI file changed:', this.files[0]);
-      handleKPIUpload(this);
-    });
-  }
-});
 
-// Direct event listener for KPI file upload
-document.addEventListener('DOMContentLoaded', function(){
+// Attach KPI upload listener
+function attachKPIListener(){
   const kpiInput = document.getElementById('kpiFile');
   if(kpiInput){
     kpiInput.addEventListener('change', function(){
-      console.log('KPI file changed:', this.files[0]);
+      console.log('KPI file input triggered:', this.files[0]);
       handleKPIUpload(this);
     });
+    console.log('KPI listener attached');
   }
-});
+}
+attachKPIListener();
+document.addEventListener('DOMContentLoaded', attachKPIListener);
