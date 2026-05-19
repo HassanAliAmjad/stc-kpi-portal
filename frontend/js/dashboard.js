@@ -60,10 +60,10 @@ function capScore(s){
 }
 
 
-  console.log("handleKPIUpload called, file:", input.files[0]);
 
 function handleKPIUpload(input){
   const file=input.files[0];
+  console.log("File selected:", input.files[0]);
   if(!file) return;
   
   // Detect month from filename
