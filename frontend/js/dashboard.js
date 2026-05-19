@@ -688,3 +688,24 @@ window.onload=function(){
   renderOverview();
   renderUploadHistory();
 };
+// Direct event listener for KPI file upload
+document.addEventListener('DOMContentLoaded', function(){
+  const kpiInput = document.getElementById('kpiFile');
+  if(kpiInput){
+    kpiInput.addEventListener('change', function(){
+      console.log('KPI file changed:', this.files[0]);
+      handleKPIUpload(this);
+    });
+  }
+});
+
+// Direct event listener for KPI file upload
+document.addEventListener('DOMContentLoaded', function(){
+  const kpiInput = document.getElementById('kpiFile');
+  if(kpiInput){
+    kpiInput.addEventListener('change', function(){
+      console.log('KPI file changed:', this.files[0]);
+      handleKPIUpload(this);
+    });
+  }
+});
