@@ -63,58 +63,54 @@ function capScore(s){
 
 function handleKPIUpload(input){
   const file=input.files[0];
-  console.log("File selected:", input.files[0]);
-  if(!file) return;
-  
-  // Detect month from filename
+  if(!file){
+    console.log("No file selected");
+    return;
+  }
+  console.log("Processing file:", file.name);
   let month='Apr';
   const filename=file.name.toLowerCase();
   if(filename.includes('jan')) month='Jan';
   else if(filename.includes('feb')) month='Feb';
   else if(filename.includes('mar')) month='Mar';
   else if(filename.includes('apr')) month='Apr';
-  
   CURRENT_MONTH=month;
-  
   const reader=new FileReader();
+  reader.onerror=function(e){
+    console.error("File read error:", e);
+    alert("Error reading file: "+e);
+  };
   reader.onload=function(e){
-      console.log("Reading Excel sheet...", ws);
-      console.log("XLSX loaded:", AGENT_PERFORMANCE);
-      console.log("Rows from Excel:", rows.length, "first row:", rows[0]);
     try{
-      const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
-      const ws=wb.Sheets['Data Entry'];
-      const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
-      
-      // Parse agent data
+      console.log("File loaded, size:", e.target.result.byteLength);
+      const data=new Uint8Array(e.target.result);
+      const wb=XLSX.read(data,{type:'array'});
+      console.log("Workbook sheets:", wb.SheetNames);
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws);
+      console.log("Parsed rows:", rows.length);
+      if(rows.length===0){
+        alert("No data found in Excel file");
+        return;
+      }
       let count=0;
       rows.forEach(r=>{
         const user=String(r['User']||'').trim();
-        if(!user || user==='') return;
-        
+        if(!user) return;
         const quality=parseFloat(r[' Quality'])||0;
         const quiz=parseFloat(r['Quiz'])||0;
         const referral=parseFloat(r['Referral TT'])||0;
         const tags=parseFloat(r['TAGS 1'])||0;
         const aht=r['ACHT1'];
         const irt=r['IRT1'];
-        
         if(!AGENT_PERFORMANCE[user]) AGENT_PERFORMANCE[user]={};
-        
-        AGENT_PERFORMANCE[user][month]={
-          quality: quality,
-          quiz: quiz,
-          referral: referral,
-          tags: tags,
-          aht: aht,
-          irt: irt,
-        };
+        AGENT_PERFORMANCE[user][month]={quality,quiz,referral,tags,aht,irt};
         count++;
       });
-      
-      alert('✅ '+month+' KPI data loaded — '+count+' agents');
-      console.log('AGENT_PERFORMANCE:', AGENT_PERFORMANCE);
+      alert('✅ '+month+' data: '+count+' agents loaded');
+      console.log('AGENT_PERFORMANCE after upload:', AGENT_PERFORMANCE);
     }catch(err){
+      console.error("Error parsing Excel:", err);
       alert('Error: '+err.message);
     }
   };
@@ -597,12 +593,58 @@ function renderUploadHistory(){
 
 function handleKPIUpload(input){
   const file=input.files[0];
-  if(!file) return;
-  const month=prompt('Which month? (e.g. May 2026)');
-  if(!month) return;
-  UPLOADS.push({name:file.name,month,date:new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}),status:'ok'});
-  renderUploadHistory();
-  alert(month+' uploaded successfully!');
+  if(!file){
+    console.log("No file selected");
+    return;
+  }
+  console.log("Processing file:", file.name);
+  let month='Apr';
+  const filename=file.name.toLowerCase();
+  if(filename.includes('jan')) month='Jan';
+  else if(filename.includes('feb')) month='Feb';
+  else if(filename.includes('mar')) month='Mar';
+  else if(filename.includes('apr')) month='Apr';
+  CURRENT_MONTH=month;
+  const reader=new FileReader();
+  reader.onerror=function(e){
+    console.error("File read error:", e);
+    alert("Error reading file: "+e);
+  };
+  reader.onload=function(e){
+    try{
+      console.log("File loaded, size:", e.target.result.byteLength);
+      const data=new Uint8Array(e.target.result);
+      const wb=XLSX.read(data,{type:'array'});
+      console.log("Workbook sheets:", wb.SheetNames);
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws);
+      console.log("Parsed rows:", rows.length);
+      if(rows.length===0){
+        alert("No data found in Excel file");
+        return;
+      }
+      let count=0;
+      rows.forEach(r=>{
+        const user=String(r['User']||'').trim();
+        if(!user) return;
+        const quality=parseFloat(r[' Quality'])||0;
+        const quiz=parseFloat(r['Quiz'])||0;
+        const referral=parseFloat(r['Referral TT'])||0;
+        const tags=parseFloat(r['TAGS 1'])||0;
+        const aht=r['ACHT1'];
+        const irt=r['IRT1'];
+        if(!AGENT_PERFORMANCE[user]) AGENT_PERFORMANCE[user]={};
+        AGENT_PERFORMANCE[user][month]={quality,quiz,referral,tags,aht,irt};
+        count++;
+      });
+      alert('✅ '+month+' data: '+count+' agents loaded');
+      console.log('AGENT_PERFORMANCE after upload:', AGENT_PERFORMANCE);
+    }catch(err){
+      console.error("Error parsing Excel:", err);
+      alert('Error: '+err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
 }
 
 function handleAttendance(input){
