@@ -89,6 +89,8 @@ function handleKPIUpload(input){
       const ws=wb.Sheets[wb.SheetNames[0]];
       const rows=XLSX.utils.sheet_to_json(ws);
       console.log("Parsed rows:", rows.length);
+      console.log("First row keys:", Object.keys(rows[0]));
+      console.log("First row data:", rows[0]);
       if(rows.length===0){
         alert("No data found in Excel file");
         return;
