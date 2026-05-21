@@ -78,7 +78,9 @@ function handleKPIUpload(input){
   
   const reader=new FileReader();
   reader.onload=function(e){
+      console.log("Reading Excel sheet...", ws);
       console.log("XLSX loaded:", AGENT_PERFORMANCE);
+      console.log("Rows from Excel:", rows.length, "first row:", rows[0]);
     try{
       const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
       const ws=wb.Sheets['Data Entry'];
