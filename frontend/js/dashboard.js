@@ -722,6 +722,56 @@ function addMsg(text,type){
 
 function logout(){clearAuth();window.location.href='/';}
 
+
+let AGENT_ATTENDANCE={};
+function handleAttendance(input){
+  const file=input.files[0];
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws);
+      let count=0;
+      rows.forEach(r=>{
+        const name=String(r['Agent Name']||'').trim();
+        if(!name) return;
+        if(!AGENT_ATTENDANCE[name]) AGENT_ATTENDANCE[name]=[];
+        AGENT_ATTENDANCE[name].push({startTime:r['Start Date & Time'],endTime:r['End Date & Time'],status:r['Status'],duration:r['Duration']});
+        count++;
+      });
+      alert('✅ Attendance: '+count+' records loaded');
+      console.log('AGENT_ATTENDANCE:',AGENT_ATTENDANCE);
+    }catch(err){
+      alert('Error: '+err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+let AGENT_ATTENDANCE={};
+function handleAttendance(input){
+  const file=input.files[0];
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws);
+      let count=0;
+      rows.forEach(r=>{
+        const name=String(r['Agent Name']||'').trim();
+        if(!name) return;
+        if(!AGENT_ATTENDANCE[name]) AGENT_ATTENDANCE[name]=[];
+        AGENT_ATTENDANCE[name].push({start:r['Start Date & Time'],end:r['End Date & Time'],status:r['Status'],duration:r['Duration']});
+        count++;
+      });
+      alert('✅ Attendance: '+count+' records loaded');
+    }catch(err){alert('Error: '+err.message);}
+  };
+  reader.readAsArrayBuffer(file);
+}
+}
 window.onload=function(){
   if(!isLoggedIn()){window.location.href='/';return;}
   const user=getUser();
