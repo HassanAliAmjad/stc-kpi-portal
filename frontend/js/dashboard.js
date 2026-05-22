@@ -753,11 +753,13 @@ function handleAttendance(input){
   if(!file) return;
   const reader=new FileReader();
   reader.onload=function(e){
+      console.log("Attendance file loaded, parsing...");
     try{
       const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
       const ws=wb.Sheets[wb.SheetNames[0]];
       const rows=XLSX.utils.sheet_to_json(ws);
       let count=0;
+      console.log("Attendance rows:", rows.length, "sample:", rows[0]);
       rows.forEach(r=>{
         const name=String(r['Agent Name']||'').trim();
         if(!name) return;
