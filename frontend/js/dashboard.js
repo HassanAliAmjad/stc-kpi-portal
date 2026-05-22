@@ -748,7 +748,6 @@ function handleAttendance(input){
     }
   };
   reader.readAsArrayBuffer(file);
-let AGENT_ATTENDANCE={};
 function handleAttendance(input){
   const file=input.files[0];
   if(!file) return;
@@ -800,7 +799,6 @@ attachKPIListener();
 document.addEventListener('DOMContentLoaded', attachKPIListener);
 
 // Attendance tracking
-let AGENT_ATTENDANCE = {};
 
 function handleAttendance(input){
   const file = input.files[0];
@@ -866,7 +864,6 @@ function handleAttendance(input){
 
 
 // Attendance tracking
-let AGENT_ATTENDANCE = {};
 
 function handleAttendance(input){
   const file = input.files[0];
