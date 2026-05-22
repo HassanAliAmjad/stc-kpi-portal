@@ -748,3 +748,135 @@ function attachKPIListener(){
 }
 attachKPIListener();
 document.addEventListener('DOMContentLoaded', attachKPIListener);
+
+// Attendance tracking
+let AGENT_ATTENDANCE = {};
+
+function handleAttendance(input){
+  const file = input.files[0];
+  if(!file){
+    console.log("No attendance file selected");
+    return;
+  }
+  
+  console.log("Processing attendance file:", file.name);
+  const reader = new FileReader();
+  
+  reader.onerror = function(e){
+    console.error("File read error:", e);
+    alert("Error reading file: "+e);
+  };
+  
+  reader.onload = function(e){
+    try{
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, {type:'array'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws);
+      
+      console.log("Attendance rows parsed:", rows.length);
+      
+      if(rows.length === 0){
+        alert("No data found in attendance file");
+        return;
+      }
+      
+      // Parse attendance data
+      let count = 0;
+      rows.forEach(r => {
+        const agentName = String(r['Agent Name'] || '').trim();
+        if(!agentName) return;
+        
+        const startTime = r['Start Date & Time'];
+        const endTime = r['End Date & Time'];
+        const status = String(r['Status'] || '').trim();
+        const duration = r['Duration'];
+        
+        if(!AGENT_ATTENDANCE[agentName]) AGENT_ATTENDANCE[agentName] = [];
+        
+        AGENT_ATTENDANCE[agentName].push({
+          startTime: startTime,
+          endTime: endTime,
+          status: status,
+          duration: duration
+        });
+        count++;
+      });
+      
+      alert('✅ Attendance data: '+count+' activity records loaded');
+      console.log('AGENT_ATTENDANCE:', AGENT_ATTENDANCE);
+    }catch(err){
+      console.error("Error parsing attendance:", err);
+      alert('Error: '+err.message);
+    }
+  };
+  
+  reader.readAsArrayBuffer(file);
+}
+
+
+// Attendance tracking
+let AGENT_ATTENDANCE = {};
+
+function handleAttendance(input){
+  const file = input.files[0];
+  if(!file){
+    console.log("No attendance file selected");
+    return;
+  }
+  
+  console.log("Processing attendance file:", file.name);
+  const reader = new FileReader();
+  
+  reader.onerror = function(e){
+    console.error("File read error:", e);
+    alert("Error reading file: "+e);
+  };
+  
+  reader.onload = function(e){
+    try{
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, {type:'array'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws);
+      
+      console.log("Attendance rows parsed:", rows.length);
+      
+      if(rows.length === 0){
+        alert("No data found in attendance file");
+        return;
+      }
+      
+      // Parse attendance data
+      let count = 0;
+      rows.forEach(r => {
+        const agentName = String(r['Agent Name'] || '').trim();
+        if(!agentName) return;
+        
+        const startTime = r['Start Date & Time'];
+        const endTime = r['End Date & Time'];
+        const status = String(r['Status'] || '').trim();
+        const duration = r['Duration'];
+        
+        if(!AGENT_ATTENDANCE[agentName]) AGENT_ATTENDANCE[agentName] = [];
+        
+        AGENT_ATTENDANCE[agentName].push({
+          startTime: startTime,
+          endTime: endTime,
+          status: status,
+          duration: duration
+        });
+        count++;
+      });
+      
+      alert('✅ Attendance data: '+count+' activity records loaded');
+      console.log('AGENT_ATTENDANCE:', AGENT_ATTENDANCE);
+    }catch(err){
+      console.error("Error parsing attendance:", err);
+      alert('Error: '+err.message);
+    }
+  };
+  
+  reader.readAsArrayBuffer(file);
+}
+
