@@ -742,6 +742,8 @@ function handleAttendance(input){
         count++;
       });
       alert('✅ Attendance: '+count+' records loaded');
+      renderAttendance();
+      renderAttendance();
       console.log('AGENT_ATTENDANCE:',AGENT_ATTENDANCE);
     }catch(err){
       alert('Error: '+err.message);
@@ -768,6 +770,8 @@ function handleAttendance(input){
         count++;
       });
       alert('✅ Attendance: '+count+' records loaded');
+      renderAttendance();
+      renderAttendance();
     }catch(err){alert('Error: '+err.message);}
   };
   reader.readAsArrayBuffer(file);
