@@ -724,6 +724,17 @@ function logout(){clearAuth();window.location.href='/';}
 
 
 let AGENT_ATTENDANCE={};
+function renderAttendance(){
+  const el=document.getElementById('attendanceContent');
+  if(!el||!AGENT_ATTENDANCE) return;
+  const agents=Object.keys(AGENT_ATTENDANCE);
+  if(agents.length===0){el.innerHTML='<p>No attendance data</p>';return;}
+  el.innerHTML=agents.slice(0,20).map(name=>{
+    const records=AGENT_ATTENDANCE[name];
+    const online=records.filter(r=>r.status==='Online').length;
+    return `<div style="padding:8px;border:1px solid #ddd;margin:5px;border-radius:4px"><b>${name}</b><br><small>Records: ${records.length} | Online: ${online}</small></div>`;
+  }).join('');
+}
 function handleAttendance(input){
   const file=input.files[0];
   if(!file) return;
