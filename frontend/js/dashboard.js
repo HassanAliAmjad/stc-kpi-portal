@@ -163,6 +163,7 @@ function showPage(page,el){
     if(page==='agents') renderAgentCards();
     if(page==='teams') renderTeams();
     if(page==='upload') renderUploadHistory();
+    if(page==='attendance') renderAttendance();
   },50);
 }
 
