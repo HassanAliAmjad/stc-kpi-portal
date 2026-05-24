@@ -724,6 +724,7 @@ function logout(){clearAuth();window.location.href='/';}
 
 
 let AGENT_ATTENDANCE={};
+if(localStorage.getItem('AGENT_ATTENDANCE')) AGENT_ATTENDANCE=JSON.parse(localStorage.getItem('AGENT_ATTENDANCE'));
 function renderAttendance(){
   const el=document.getElementById('attendanceContent');
   if(!el||!AGENT_ATTENDANCE) return;
@@ -754,7 +755,9 @@ function handleAttendance(input){
       });
       alert('✅ Attendance: '+count+' records loaded');
       renderAttendance();
+      localStorage.setItem('AGENT_ATTENDANCE', JSON.stringify(AGENT_ATTENDANCE));
       renderAttendance();
+      localStorage.setItem('AGENT_ATTENDANCE', JSON.stringify(AGENT_ATTENDANCE));
       console.log('AGENT_ATTENDANCE:',AGENT_ATTENDANCE);
     }catch(err){
       alert('Error: '+err.message);
@@ -782,7 +785,9 @@ function handleAttendance(input){
       });
       alert('✅ Attendance: '+count+' records loaded');
       renderAttendance();
+      localStorage.setItem('AGENT_ATTENDANCE', JSON.stringify(AGENT_ATTENDANCE));
       renderAttendance();
+      localStorage.setItem('AGENT_ATTENDANCE', JSON.stringify(AGENT_ATTENDANCE));
     }catch(err){alert('Error: '+err.message);}
   };
   reader.readAsArrayBuffer(file);
