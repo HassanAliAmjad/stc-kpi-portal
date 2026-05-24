@@ -724,6 +724,13 @@ function logout(){clearAuth();window.location.href='/';}
 
 
 let AGENT_ATTENDANCE={};
+AGENT_ATTENDANCE={
+  "Sultan Nahar":[{start:"16 May 08:00",end:"16 May 17:00",status:"Online",duration:"09:00"},{start:"17 May 08:15",end:"17 May 17:30",status:"Online",duration:"09:15"}],
+  "Abdullah Essam":[{start:"16 May 08:30",end:"16 May 16:45",status:"Online",duration:"08:15"},{start:"17 May 08:00",end:"17 May 17:00",status:"Online",duration:"09:00"}],
+  "Ahmed Ahmad":[{start:"16 May 09:00",end:"16 May 18:00",status:"Online",duration:"09:00"},{start:"17 May 08:30",end:"17 May 17:30",status:"Online",duration:"09:00"}],
+  "Ali Aaqab":[{start:"16 May 08:00",end:"16 May 17:15",status:"Online",duration:"09:15"},{start:"17 May 07:45",end:"17 May 17:00",status:"Online",duration:"09:15"}],
+  "Faisal Jaber":[{start:"16 May 08:15",end:"16 May 17:30",status:"Online",duration:"09:15"},{start:"17 May 08:00",end:"17 May 17:00",status:"Online",duration:"09:00"}]
+};
 if(localStorage.getItem('AGENT_ATTENDANCE')) AGENT_ATTENDANCE=JSON.parse(localStorage.getItem('AGENT_ATTENDANCE'));
 function renderAttendance(){
   const el=document.getElementById('attendanceContent');
