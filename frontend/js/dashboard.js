@@ -738,14 +738,23 @@ function renderAttendance(){
   if(!el||!AGENT_ATTENDANCE) return;
   const agents=Object.keys(AGENT_ATTENDANCE);
   if(agents.length===0){el.innerHTML='<p>No attendance data</p>';return;}
-  el.innerHTML=agents.slice(0,20).map(name=>{
-    const records=AGENT_ATTENDANCE[name];
-    const online=records.filter(r=>r.status==='Online').length;
-    const away=records.filter(r=>r.status==='Away').length;
-    const totalHours=records.length*9;
-    const breakHours=away;
-    return `<div style="padding:12px;border:1px solid #ddd;margin:8px;border-radius:6px;background:#f9f9f9"><div style="font-weight:600;font-size:16px">${name}</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px"><div style="text-align:center"><div style="font-size:18px;font-weight:600;color:#6B2D8B">${totalHours}h</div><div style="font-size:12px;color:#666">Online Hours</div></div><div style="text-align:center"><div style="font-size:18px;font-weight:600;color:#856404">${breakHours}h</div><div style="font-size:12px;color:#666">Break Hours</div></div><div style="text-align:center"><div style="font-size:18px;font-weight:600;color:#1a7f37">${records.length}</div><div style="font-size:12px;color:#666">Records</div></div></div></div>`;
-  }).join('');
+  const dates=[];
+  agents.forEach(a=>AGENT_ATTENDANCE[a].forEach(r=>{const d=String(r.start).split(' ')[0];if(!dates.includes(d))dates.push(d);}));
+  let dateFilter=dates[0]||'16 May';
+  el.innerHTML=`<div style="margin-bottom:20px"><label>Select Date: </label><select id="dateFilter" onchange="updateAttendanceDate(this.value)" style="padding:8px;border:1px solid #ddd;border-radius:4px"><option>${dateFilter}</option>${dates.map(d=>`<option>${d}</option>`).join('')}</select></div><div id="attendanceList"></div>`;
+  updateAttendanceDate(dateFilter);
+}
+function updateAttendanceDate(date){
+  const el=document.getElementById('attendanceList');
+  const agents=Object.keys(AGENT_ATTENDANCE);
+  el.innerHTML=agents.map(name=>{
+    const recs=AGENT_ATTENDANCE[name].filter(r=>r.start.includes(date));
+    if(recs.length===0) return '';
+    const login=recs[0].start.split(' ')[1]||'—';
+    const logout=recs[recs.length-1].end.split(' ')[1]||'—';
+    const breakH=recs.filter(r=>r.status==='Away').length;
+    return `<div style="padding:12px;border:1px solid #ddd;margin:8px;border-radius:6px;background:#f9f9f9"><div style="font-weight:600;font-size:16px">${name}</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px"><div style="text-align:center"><div style="font-size:14px;font-weight:600;color:#6B2D8B">${login}</div><div style="font-size:11px;color:#666">Login</div></div><div style="text-align:center"><div style="font-size:14px;font-weight:600;color:#6B2D8B">${logout}</div><div style="font-size:11px;color:#666">Logout</div></div><div style="text-align:center"><div style="font-size:14px;font-weight:600;color:#856404">${breakH}h</div><div style="font-size:11px;color:#666">Breaks</div></div><div style="text-align:center"><div style="font-size:14px;font-weight:600;color:#1a7f37">${recs.length}</div><div style="font-size:11px;color:#666">Sessions</div></div></div></div>`;
+  }).filter(x=>x).join('');
 }
 function handleAttendance(input){
   const file=input.files[0];
