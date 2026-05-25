@@ -741,7 +741,10 @@ function renderAttendance(){
   el.innerHTML=agents.slice(0,20).map(name=>{
     const records=AGENT_ATTENDANCE[name];
     const online=records.filter(r=>r.status==='Online').length;
-    return `<div style="padding:8px;border:1px solid #ddd;margin:5px;border-radius:4px"><b>${name}</b><br><small>Records: ${records.length} | Online: ${online}</small></div>`;
+    const away=records.filter(r=>r.status==='Away').length;
+    const totalHours=records.length*9;
+    const breakHours=away;
+    return `<div style="padding:12px;border:1px solid #ddd;margin:8px;border-radius:6px;background:#f9f9f9"><div style="font-weight:600;font-size:16px">${name}</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px"><div style="text-align:center"><div style="font-size:18px;font-weight:600;color:#6B2D8B">${totalHours}h</div><div style="font-size:12px;color:#666">Online Hours</div></div><div style="text-align:center"><div style="font-size:18px;font-weight:600;color:#856404">${breakHours}h</div><div style="font-size:12px;color:#666">Break Hours</div></div><div style="text-align:center"><div style="font-size:18px;font-weight:600;color:#1a7f37">${records.length}</div><div style="font-size:12px;color:#666">Records</div></div></div></div>`;
   }).join('');
 }
 function handleAttendance(input){
