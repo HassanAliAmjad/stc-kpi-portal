@@ -972,3 +972,231 @@ function handleAttendance(input){
   reader.readAsArrayBuffer(file);
 }
 
+// ============================================
+// FILE UPLOAD HANDLER - For KPI & Attendance Files
+// ============================================
+// Add this code to your dashboard.js
+
+// Setup file upload handlers when page loads
+function setupFileUploadHandlers() {
+  // KPI File Upload
+  const kpiUploadArea = document.querySelector('[data-upload-area="kpi"]');
+  if (kpiUploadArea) {
+    setupUploadArea(kpiUploadArea, 'kpi');
+  }
+
+  // Attendance File Upload
+  const attendanceUploadArea = document.querySelector('[data-upload-area="attendance"]');
+  if (attendanceUploadArea) {
+    setupUploadArea(attendanceUploadArea, 'attendance');
+  }
+
+  // Fallback: Find upload areas by text content
+  const uploadAreas = document.querySelectorAll('[style*="border"]');
+  uploadAreas.forEach(area => {
+    if (area.textContent.includes('Drop .xlsx') || area.textContent.includes('click to browse')) {
+      if (!area.hasListener) {
+        const fileType = area.closest('div').textContent.includes('Monthly KPI') ? 'kpi' : 'attendance';
+        setupUploadArea(area, fileType);
+        area.hasListener = true;
+      }
+    }
+  });
+}
+
+// Setup individual upload area
+function setupUploadArea(uploadArea, fileType) {
+  // Drag and drop events
+  uploadArea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    uploadArea.style.opacity = '0.7';
+    uploadArea.style.backgroundColor = 'rgba(0,0,0,0.1)';
+  });
+
+  uploadArea.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    uploadArea.style.opacity = '1';
+    uploadArea.style.backgroundColor = '';
+  });
+
+  uploadArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    uploadArea.style.opacity = '1';
+    uploadArea.style.backgroundColor = '';
+
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      handleFileUpload(files[0], fileType);
+    }
+  });
+
+  // Click to browse
+  uploadArea.addEventListener('click', () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.xlsx';
+    input.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) {
+        handleFileUpload(e.target.files[0], fileType);
+      }
+    });
+    input.click();
+  });
+}
+
+// Main file upload handler
+async function handleFileUpload(file, fileType) {
+  console.log(`Uploading ${fileType} file:`, file.name);
+
+  // Show loading message
+  showMessage('Uploading file...', 'loading');
+
+  try {
+    // Create FormData
+    const formData = new FormData();
+    formData.append('kpifile', file);
+    formData.append('month', new Date().toLocaleString('en-US', { month: 'long' }));
+    formData.append('year', new Date().getFullYear());
+    formData.append('fileType', fileType);
+
+    // Send to backend API
+    const response = await fetch('/api/upload', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+      },
+      body: formData
+    });
+
+    const result = await response.json();
+
+    if (response.ok && result.success) {
+      // Success!
+      console.log('Upload successful:', result);
+      showMessage(`✅ ${result.message}`, 'success');
+
+      // Update page with results
+      if (result.summary) {
+        displayUploadResults(result, fileType);
+      }
+
+      // Refresh the page after 2 seconds
+      setTimeout(() => {
+        location.reload();
+      }, 2000);
+    } else {
+      // API returned an error
+      console.error('Upload failed:', result);
+      showMessage(`❌ Error: ${result.message}`, 'error');
+    }
+  } catch (error) {
+    console.error('Upload error:', error);
+    showMessage(`❌ Upload failed: ${error.message}`, 'error');
+  }
+}
+
+// Display upload results
+function displayUploadResults(result, fileType) {
+  console.log(`${fileType} file processed:`, result);
+  console.log('File Type:', result.fileType);
+  console.log('Summary:', result.summary);
+  console.log('Agents:', result.agents);
+
+  // Create results display
+  const resultsDiv = document.createElement('div');
+  resultsDiv.style.cssText = `
+    background: #e8f5e9;
+    border: 2px solid #4caf50;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 20px 0;
+    font-family: Arial, sans-serif;
+  `;
+
+  let html = `
+    <h3 style="color: #2e7d32; margin: 0 0 15px 0;">✅ Upload Successful!</h3>
+    <p><strong>File Type:</strong> ${result.fileType}</p>
+    <p><strong>Message:</strong> ${result.message}</p>
+  `;
+
+  if (result.fileType === 'KPI') {
+    html += `
+      <h4 style="color: #1976d2; margin: 15px 0 10px 0;">KPI Summary:</h4>
+      <ul style="margin: 0; padding-left: 20px;">
+        <li>Total Agents: ${result.summary.totalAgents}</li>
+        <li>Average Score: ${result.summary.averageScore}</li>
+        <li>Top Score: ${result.summary.topScore}</li>
+        <li>Lowest Score: ${result.summary.lowestScore}</li>
+      </ul>
+    `;
+  } else if (result.fileType === 'ATTENDANCE') {
+    html += `
+      <h4 style="color: #1976d2; margin: 15px 0 10px 0;">Attendance Summary:</h4>
+      <ul style="margin: 0; padding-left: 20px;">
+        <li>Total Agents: ${result.summary.totalAgents}</li>
+        <li>Total Records: ${result.summary.totalRecords}</li>
+      </ul>
+    `;
+  }
+
+  resultsDiv.innerHTML = html;
+
+  // Add to page
+  const uploadSection = document.querySelector('[style*="upload"]');
+  if (uploadSection) {
+    uploadSection.parentElement.insertBefore(resultsDiv, uploadSection.nextSibling);
+  }
+}
+
+// Show temporary message
+function showMessage(text, type = 'info') {
+  // Remove old message if exists
+  const oldMsg = document.getElementById('upload-message');
+  if (oldMsg) oldMsg.remove();
+
+  const msgDiv = document.createElement('div');
+  msgDiv.id = 'upload-message';
+  msgDiv.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 15px 20px;
+    border-radius: 8px;
+    font-family: Arial, sans-serif;
+    font-weight: bold;
+    z-index: 9999;
+    animation: slideIn 0.3s ease-in-out;
+  `;
+
+  if (type === 'success') {
+    msgDiv.style.backgroundColor = '#4caf50';
+    msgDiv.style.color = 'white';
+  } else if (type === 'error') {
+    msgDiv.style.backgroundColor = '#f44336';
+    msgDiv.style.color = 'white';
+  } else {
+    msgDiv.style.backgroundColor = '#2196f3';
+    msgDiv.style.color = 'white';
+  }
+
+  msgDiv.textContent = text;
+  document.body.appendChild(msgDiv);
+
+  // Remove after 5 seconds
+  setTimeout(() => {
+    msgDiv.remove();
+  }, 5000);
+}
+
+// Initialize when page loads
+document.addEventListener('DOMContentLoaded', setupFileUploadHandlers);
+
+// Also try to setup when upload tab is clicked
+document.addEventListener('click', (e) => {
+  if (e.target.textContent.includes('Upload') || e.target.closest('[role="tab"]')?.textContent.includes('Upload')) {
+    setTimeout(setupFileUploadHandlers, 100);
+  }
+});
