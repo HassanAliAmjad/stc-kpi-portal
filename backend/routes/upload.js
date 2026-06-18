@@ -152,7 +152,7 @@ function processAttendanceFile(workbook) {
 }
 
 // Main upload endpoint
-router.post('/', async (req, res) => {
+router.post('/', upload.single('kpifile'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ success: false, message: 'No file uploaded' });
   }
