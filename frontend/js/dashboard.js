@@ -835,7 +835,7 @@ function attachKPIListener(){
   if(kpiInput){
     kpiInput.addEventListener('change', function(){
       console.log('KPI file input triggered:', this.files[0]);
-      handleKPIUpload(this);
+      handleFileUpload(this.files[0], 'kpi');
     });
     console.log('KPI listener attached');
   }
