@@ -2,16 +2,12 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const XLSX = require('xlsx');
-const path = require('path');
+const pool = require('../db');
 
-// Configure file upload
+// ─── File upload config ──────────────────────────────────
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/');
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + '_' + file.originalname);
-  }
+  destination: (req, file, cb) => cb(null, 'uploads/'),
+  filename: (req, file, cb) => cb(null, Date.now() + '_' + file.originalname)
 });
 
 const upload = multer({
@@ -25,170 +21,156 @@ const upload = multer({
   }
 });
 
-// Detect file type
-function detectFileType(workbook) {
-  const sheetNames = workbook.SheetNames.map(s => s.toLowerCase());
-  
-  // Check for KPI file
-  if (sheetNames.some(s => s.includes('kpi') || s.includes('echannel') || s.includes('score'))) {
-    return 'KPI';
-  }
-  
-  // Check for Attendance file
-  if (sheetNames.some(s => s.includes('login') || s.includes('attendance') || s.includes('activity'))) {
-    return 'ATTENDANCE';
-  }
-  
-  return 'UNKNOWN';
+// ─── Helpers ─────────────────────────────────────────────
+
+// Safely turn a cell into a 0–1 decimal. Scores in the sheet are already
+// fractions (0.2, 0.98). Guards against blanks / weird types.
+function toDecimal(v) {
+  const n = parseFloat(v);
+  return isNaN(n) ? 0 : n;
 }
 
-// Process KPI File
-function processKPIFile(workbook) {
-  try {
-    const kpiSheet = workbook.SheetNames.find(s => 
-      s.toLowerCase().includes('echannel') || s.toLowerCase().includes('kpi score')
-    );
-
-    if (!kpiSheet) {
-      return { success: false, message: 'No KPI Score sheet found' };
-    }
-
-    const data = XLSX.utils.sheet_to_json(workbook.Sheets[kpiSheet]);
-    
-    if (data.length === 0) {
-      return { success: false, message: 'No data in KPI sheet' };
-    }
-
-    // Find agent name and score columns
-    const firstRow = data[0];
-    const agentCol = Object.keys(firstRow).find(k => 
-      k.toLowerCase().includes('agent') || k.toLowerCase().includes('name')
-    );
-    const scoreCol = Object.keys(firstRow).find(k => 
-      k.toLowerCase().includes('score') && k.toLowerCase().includes('final')
-    ) || Object.keys(firstRow).find(k => k.toLowerCase().includes('score'));
-
-    if (!agentCol || !scoreCol) {
-      return { success: false, message: 'Cannot find Agent Name or Score columns' };
-    }
-
-    const agents = data
-      .filter(row => row[agentCol])
-      .map(row => ({
-        name: String(row[agentCol]).trim(),
-        score: parseFloat(row[scoreCol]) || 0
-      }));
-
-    if (agents.length === 0) {
-      return { success: false, message: 'No agents found in data' };
-    }
-
-    const scores = agents.map(a => a.score).filter(s => !isNaN(s));
-    const avgScore = scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2) : 0;
-
-    return {
-      success: true,
-      type: 'KPI',
-      message: `KPI file processed: ${agents.length} agents, Avg Score: ${avgScore}`,
-      agents: agents,
-      summary: {
-        totalAgents: agents.length,
-        averageScore: parseFloat(avgScore),
-        topScore: Math.max(...scores),
-        lowestScore: Math.min(...scores)
-      }
-    };
-  } catch (error) {
-    return { success: false, message: `KPI processing error: ${error.message}` };
-  }
+// Absenteeism is a whole number of days in the sheet ("Absenteeism" col).
+function toInt(v) {
+  const n = parseInt(v, 10);
+  return isNaN(n) ? 0 : n;
 }
 
-// Process Attendance File
-function processAttendanceFile(workbook) {
-  try {
-    const loginSheet = workbook.SheetNames.find(s => 
-      s.toLowerCase().includes('login') || s.toLowerCase().includes('attendance')
-    );
-
-    if (!loginSheet) {
-      return { success: false, message: 'No Login/Attendance sheet found' };
-    }
-
-    const data = XLSX.utils.sheet_to_json(workbook.Sheets[loginSheet]);
-
-    if (data.length === 0) {
-      return { success: false, message: 'No data in attendance sheet' };
-    }
-
-    // Extract agent names
-    const firstRow = data[0];
-    const agentCol = Object.keys(firstRow).find(k => 
-      k.toLowerCase().includes('agent') || k.toLowerCase().includes('name')
-    );
-
-    if (!agentCol) {
-      return { success: false, message: 'Cannot find Agent column' };
-    }
-
-    const agents = [...new Set(data.map(row => String(row[agentCol]).trim()).filter(Boolean))];
-
-    if (agents.length === 0) {
-      return { success: false, message: 'No agents found in data' };
-    }
-
-    return {
-      success: true,
-      type: 'ATTENDANCE',
-      message: `Attendance file processed: ${agents.length} agents, ${data.length} records`,
-      agents: agents,
-      summary: {
-        totalAgents: agents.length,
-        totalRecords: data.length
-      }
-    };
-  } catch (error) {
-    return { success: false, message: `Attendance processing error: ${error.message}` };
-  }
+// Find the KPI score sheet by name (tolerant of spacing/case).
+function findKpiSheet(workbook) {
+  return workbook.SheetNames.find(s => {
+    const low = s.toLowerCase();
+    return low.includes('echannel') || low.includes('kpi score') || low.includes('kpi');
+  });
 }
 
-// Main upload endpoint
+// ─── Main upload endpoint ────────────────────────────────
 router.post('/', upload.single('kpifile'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ success: false, message: 'No file uploaded' });
   }
 
+  const month = (req.body.month || '').toString().slice(0, 10) || 'Unknown';
+  const year = parseInt(req.body.year, 10) || new Date().getFullYear();
+
   try {
     const workbook = XLSX.readFile(req.file.path);
-    const fileType = detectFileType(workbook);
+    const sheetName = findKpiSheet(workbook);
 
-    let result;
-
-    if (fileType === 'KPI') {
-      result = processKPIFile(workbook);
-    } else if (fileType === 'ATTENDANCE') {
-      result = processAttendanceFile(workbook);
-    } else {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Unknown file type. Expected KPI or Attendance file.' 
+    if (!sheetName) {
+      return res.status(400).json({
+        success: false,
+        message: 'No KPI score sheet found (looked for a sheet named like "eChannels KPI Score").'
       });
     }
 
-    if (!result.success) {
-      return res.status(400).json({ success: false, message: result.message });
+    // Read with header row mapped to keys
+    const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: null });
+
+    if (rows.length === 0) {
+      return res.status(400).json({ success: false, message: 'KPI sheet has no data rows.' });
     }
 
-    res.json({
+    // Record the upload itself
+    const uploadRec = await pool.query(
+      `INSERT INTO kpi_uploads (month, year, filename, status)
+       VALUES ($1, $2, $3, $4) RETURNING id`,
+      [month, year, req.file.originalname, 'processing']
+    );
+    const uploadId = uploadRec.rows[0].id;
+
+    const matched = [];
+    const unmatched = [];
+
+    for (const row of rows) {
+      // HR ID lives in the "Agent user" column; it matches agents.hr_id
+      const hrIdRaw = row['Agent user'];
+      const agentName = (row['Agent Name'] || '').toString().trim();
+
+      if (hrIdRaw === null || hrIdRaw === undefined || hrIdRaw === '') {
+        continue; // skip blank rows
+      }
+
+      const hrId = String(hrIdRaw).trim();
+
+      // Match agent by HR ID (primary), then by name (fallback)
+      let agentResult = await pool.query(
+        'SELECT id, full_name FROM agents WHERE hr_id = $1',
+        [hrId]
+      );
+
+      if (agentResult.rows.length === 0 && agentName) {
+        agentResult = await pool.query(
+          'SELECT id, full_name FROM agents WHERE LOWER(TRIM(full_name)) = LOWER($1)',
+          [agentName]
+        );
+      }
+
+      if (agentResult.rows.length === 0) {
+        unmatched.push({ hr_id: hrId, name: agentName });
+        continue;
+      }
+
+      const agentId = agentResult.rows[0].id;
+
+      // Map sheet columns -> DB columns
+      const finalScore   = toDecimal(row['Final Score']);
+      const qualityScore = toDecimal(row['Quality Score']);
+      const quizScore    = toDecimal(row['Quiz Score']);
+      const ahtScore     = toDecimal(row['ACHT1 Score']);
+      const irtScore     = toDecimal(row['FRT1 Score']);
+      const referralScore= toDecimal(row['Referral TT Score']);
+      const tagsScore    = toDecimal(row['TAGS 1 Score']);
+      const absenteeism  = toInt(row['Absenteeism']);
+
+      // Upsert on (agent_id, month, year)
+      await pool.query(
+        `INSERT INTO kpi_scores
+          (agent_id, upload_id, month, year, final_score, quality_score,
+           quiz_score, aht_score, irt_score, referral_score, tags_score, absenteeism_days)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+         ON CONFLICT (agent_id, month, year)
+         DO UPDATE SET
+           upload_id = EXCLUDED.upload_id,
+           final_score = EXCLUDED.final_score,
+           quality_score = EXCLUDED.quality_score,
+           quiz_score = EXCLUDED.quiz_score,
+           aht_score = EXCLUDED.aht_score,
+           irt_score = EXCLUDED.irt_score,
+           referral_score = EXCLUDED.referral_score,
+           tags_score = EXCLUDED.tags_score,
+           absenteeism_days = EXCLUDED.absenteeism_days`,
+        [agentId, uploadId, month, year, finalScore, qualityScore,
+         quizScore, ahtScore, irtScore, referralScore, tagsScore, absenteeism]
+      );
+
+      matched.push({ hr_id: hrId, name: agentResult.rows[0].full_name, final_score: finalScore });
+    }
+
+    // Mark upload complete
+    await pool.query(
+      `UPDATE kpi_uploads SET status = $1 WHERE id = $2`,
+      ['completed', uploadId]
+    );
+
+    return res.json({
       success: true,
-      fileType: result.type,
-      message: result.message,
-      summary: result.summary,
-      agents: result.agents
+      fileType: 'KPI',
+      message: `${month} ${year}: ${matched.length} agents saved` +
+        (unmatched.length ? `, ${unmatched.length} unmatched` : ''),
+      summary: {
+        month,
+        year,
+        matchedCount: matched.length,
+        unmatchedCount: unmatched.length
+      },
+      matched,
+      unmatched
     });
 
   } catch (error) {
     console.error('Upload error:', error);
-    res.status(500).json({ success: false, message: `Server error: ${error.message}` });
+    return res.status(500).json({ success: false, message: `Server error: ${error.message}` });
   }
 });
 
