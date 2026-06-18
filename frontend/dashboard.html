@@ -229,7 +229,7 @@
           <div class="upload-card-title">Monthly KPI file</div>
           <div class="upload-card-sub">Upload your monthly KPI Excel — same format as Jan–Apr files</div>
           <div class="upload-zone" onclick="document.getElementById('kpiFile').click()">Drop .xlsx file here or click to browse</div>
-          <input type="file" id="kpiFile" accept=".xlsx" style="display:none" onchange="handleKPIUpload(this)"/>
+          <input type="file" id="kpiFile" accept=".xlsx" style="display:none" onchange="handleFileUpload(this.files[0], 'kpi')"
         </div>
         <div class="upload-card">
           <div class="upload-card-icon">🕐</div>
